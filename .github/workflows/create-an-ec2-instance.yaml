@@ -23,7 +23,7 @@ on:
 
 env:
   ROOT_PATH: '${{ github.workspace }}/'
-
+  
 jobs:
   provision-ec2:
     runs-on: ubuntu-latest
@@ -66,12 +66,12 @@ jobs:
           TF_VAR_ec2_instance_type: ${{ github.event.inputs.ec2_instance_type }}
         run: |
           pwd        
-#          cd ../..
+          #cd ../..
           terraform init
           terraform validate
           terraform plan 
           terraform apply -auto-approve
-        working-directory: ${{env.ROOT_PATH}}  
+        working-directory: ${{env.ROOT_PATH}}
 
       - name: Set Outputs
         id: set_outputs
