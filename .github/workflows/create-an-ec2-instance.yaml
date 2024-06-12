@@ -76,7 +76,7 @@ jobs:
       - name: Set Outputs
         id: set_outputs
         run: |
-          cd <TERRAFORM-TEMPLATE-DIR>
+          #cd <TERRAFORM-TEMPLATE-DIR>
           echo "instance_id=$(terraform output -raw instance_id)" >> $GITHUB_ENV
           echo "instance_state=$(terraform output -raw instance_state)" >> $GITHUB_ENV
           echo "instance_type=$(terraform output -raw instance_type)" >> $GITHUB_ENV
