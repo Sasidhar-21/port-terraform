@@ -1,123 +1,133 @@
-name: Create VPC Infrastructure with Terraform
+name: Provision a VPC
 
 on:
   workflow_dispatch:
     inputs:
       vpc_name:
-        description: 'VPC Name'
+        description: VPC name
         required: true
+        default: 'Main VPC'
         type: string
-      vpc_cidr:
-        description: 'VPC CIDR Block'
+      aws_region:
+        description: AWS region
         required: true
-        type: string
-      region:
-        description: 'AWS Region'
-        required: true
+        default: "us-west-2"
         type: string
       port_context:
+        description: Includes blueprint, run ID, and entity identifier from Port.
         required: true
-        type: string
 
+env:
+  TERRAFORM_PATH: '${{ github.workspace }}/vpc'
+  
 jobs:
-  create-vpc-infrastructure:
+  provision-vpc:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v3
+      - uses: actions/checkout@v3
 
-    - name: Debug port_context
-      run: echo "${{ inputs.port_context }}"
-      
-    - name: Log starting of VPC Infra creation 
-      uses: port-labs/port-github-action@v1
-      with:
-        clientId: ${{ secrets.PORT_CLIENT_ID }}
-        clientSecret: ${{ secrets.PORT_CLIENT_SECRET }}
-        operation: PATCH_RUN
-        runId: ${{ fromJson(inputs.port_context).run_Id }}
-        logMessage: |
-            About to create vpc infra creation ${{ github.event.inputs.vpc_name }} .. ⛴️
+      - uses: actions/setup-node@v3
+        with:
+          node-version: '14'
 
-    - name: Setup Terraform
-      uses: hashicorp/setup-terraform@v1
+      - name: Log starting of VPC creation 
+        uses: port-labs/port-github-action@v1
+        with:
+          clientId: ${{ secrets.PORT_CLIENT_ID }}
+          clientSecret: ${{ secrets.PORT_CLIENT_SECRET }}
+          operation: PATCH_RUN
+          runId: ${{ fromJson(inputs.port_context).run_id }}
+          logMessage: |
+            About to create VPC ${{ github.event.inputs.vpc_name }} .. ⛴️
 
-    - name: Configure AWS credentials
-      uses: aws-actions/configure-aws-credentials@v2
-      with:
-        aws-access-key-id: ${{ secrets.TF_USER_AWS_KEY }}
-        aws-secret-access-key: ${{ secrets.TF_USER_AWS_KEY }}
-        aws-region: ${{ github.event.inputs.region }}
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.TF_USER_AWS_KEY }}
+          aws-secret-access-key: ${{ secrets.TF_USER_AWS_SECRET }}
+          aws-region: ${{ secrets.TF_USER_AWS_REGION }}
 
-    - name: Change directory to module
-      run: cd module
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_wrapper: false
+          
+      - name: Terraform Apply
+        id: apply
+        env:
+          TF_VAR_vpc_name: ${{ github.event.inputs.vpc_name }}
+          TF_VAR_aws_region: ${{ secrets.TF_USER_AWS_REGION }}
+        run: |
+          cd ${{ env.TERRAFORM_PATH }}
+          terraform init
+          terraform validate
+          terraform plan 
+          terraform apply -auto-approve
+        working-directory: ${{ env.TERRAFORM_PATH }}
 
-    - name: Terraform Init
-      run: terraform init
-      working-directory: module
+      - name: Set Outputs
+        id: set_outputs
+        run: |
+          cd ${{ env.TERRAFORM_PATH }}
+          echo "vpc_id=$(terraform output -raw vpc_id)" >> $GITHUB_ENV
+          echo "region=$(terraform output -raw region)" >> $GITHUB_ENV
+          echo "public_subnet_ids=$(terraform output -json public_subnet_ids | jq -c .)" >> $GITHUB_ENV
+          echo "private_subnet_ids=$(terraform output -json private_subnet_ids | jq -c .)" >> $GITHUB_ENV
+          echo "route_table_ids=$(terraform output -json route_table_ids | jq -c .)" >> $GITHUB_ENV
+          echo "internet_gateway_id=$(terraform output -raw internet_gateway_id)" >> $GITHUB_ENV
+          echo "nat_gateway_ids=$(terraform output -json nat_gateway_ids | jq -c .)" >> $GITHUB_ENV
+          tags=$(terraform output -json tags | jq -c .)
+          echo "tags=$tags" >> $GITHUB_ENV
 
-    - name: Terraform Plan
-      run: |
-        terraform plan -target="module.vpc" \
-                        -var="vpc_name=${{ github.event.inputs.vpc_name }}" \
-                        -var="vpc_cidr=${{ github.event.inputs.vpc_cidr }}" \
-                        -var="region=${{ github.event.inputs.region }}"
-      working-directory: module
+      - name: Create a log message
+        uses: port-labs/port-github-action@v1
+        with:
+          clientId: ${{ secrets.PORT_CLIENT_ID }}
+          clientSecret: ${{ secrets.PORT_CLIENT_SECRET }}
+          operation: PATCH_RUN
+          runId: ${{ fromJson(inputs.port_context).run_id }}
+          logMessage: |
+            VPC created successfully ✅
 
-    - name: Terraform Apply
-      run: |
-        terraform apply -target="module.vpc" \
-                        -var="vpc_name=${{ github.event.inputs.vpc_name }}" \
-                        -var="vpc_cidr=${{ github.event.inputs.vpc_cidr }}" \
-                        -var="region=${{ github.event.inputs.region }}" \
-                        -auto-approve
-      working-directory: module
+      - name: Report Created VPC to Port
+        uses: port-labs/port-github-action@v1
+        with:
+          clientId: ${{ secrets.PORT_CLIENT_ID }}
+          clientSecret: ${{ secrets.PORT_CLIENT_SECRET }}
+          baseUrl: https://api.getport.io
+          operation: PATCH_RUN
+          runId: ${{ fromJson(inputs.port_context).run_id }}
+          logMessage: "Upserting created VPC to Port ... "
+          
+      - name: UPSERT VPC Entity
+        uses: port-labs/port-github-action@v1
+        with:
+          identifier: "${{ env.vpc_id }}"
+          title: "${{ github.event.inputs.vpc_name }}"
+          blueprint: ${{ fromJson(inputs.port_context).blueprint }}
+          properties: |-
+            {
+              "region": "${{ env.region }}",
+              "public_subnet_ids": ${{ env.public_subnet_ids }},
+              "private_subnet_ids": ${{ env.private_subnet_ids }},
+              "route_table_ids": ${{ env.route_table_ids }},
+              "internet_gateway_id": "${{ env.internet_gateway_id }}",
+              "nat_gateway_ids": ${{ env.nat_gateway_ids }},
+              "tags": ${{ env.tags }}
+            }
+          clientId: ${{ secrets.PORT_CLIENT_ID }}
+          clientSecret: ${{ secrets.PORT_CLIENT_SECRET }}
+          baseUrl: https://api.getport.io
+          operation: UPSERT
+          runId: ${{ fromJson(inputs.port_context).run_id }}
 
-    - name: Create a log message
-      uses: port-labs/port-github-action@v1
-      with:
-        clientId: ${{ secrets.PORT_CLIENT_ID }}
-        clientSecret: ${{ secrets.PORT_CLIENT_SECRET }}
-        operation: PATCH_RUN
-        runId: ${{ fromJson(inputs.port_context).run_id }}
-        logMessage: |
-            VPC Infra created successfully ✅
-
-    - name: Report Created VPC Creation to Port
-      uses: port-labs/port-github-action@v1
-      with:
-        clientId: ${{ secrets.PORT_CLIENT_ID }}
-        clientSecret: ${{ secrets.PORT_CLIENT_SECRET }}
-        baseUrl: https://api.getport.io
-        operation: PATCH_RUN
-        runId: ${{ fromJson(inputs.port_context).run_id }}
-        logMessage: "Upserting created VPC Infra to Port ... "
-
-    - name: UPSERT VPC Entity
-      uses: port-labs/port-github-action@v1
-      with:
-        identifier: "${{ env.vpc_id }}"
-        title: "${{ github.event.inputs.vpc_name }}"
-        blueprint: ${{ fromJson(inputs.port_context).blueprint }}
-        properties: |-
-          {
-            "vpc_id": "${{ env.vpc_id }}",
-            "vpc_cidr": "${{ env.vpc_cidr }}",
-            "region": "${{ env.region }}"
-          }
-        clientId: ${{ secrets.PORT_CLIENT_ID }}
-        clientSecret: ${{ secrets.PORT_CLIENT_SECRET }}
-        baseUrl: https://api.getport.io
-        operation: UPSERT
-        runId: ${{ fromJson(inputs.port_context).run_id }}
-
-    - name: Log After Upserting Entity
-      uses: port-labs/port-github-action@v1
-      with:
-        clientId: ${{ secrets.PORT_CLIENT_ID }}
-        clientSecret: ${{ secrets.PORT_CLIENT_SECRET }}
-        baseUrl: https://api.getport.io
-        operation: PATCH_RUN
-        runId: ${{ fromJson(inputs.port_context).run_id }}
-        logMessage: "Entity upserting was successful ✅"
+      - name: Log After Upserting Entity
+        uses: port-labs/port-github-action@v1
+        with:
+          clientId: ${{ secrets.PORT_CLIENT_ID }}
+          clientSecret: ${{ secrets.PORT_CLIENT_SECRET }}
+          baseUrl: https://api.getport.io
+          operation: PATCH_RUN
+          runId: ${{ fromJson(inputs.port_context).run_id }}
+          logMessage: "Entity upserting was successful ✅"
