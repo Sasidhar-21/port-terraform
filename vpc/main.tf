@@ -1,57 +1,27 @@
+variable "vpc_name" {
+  description = "The name of the VPC"
+  type        = string
+}
+
+variable "vpc_cidr" {
+  description = "The CIDR block for the VPC"
+  type        = string
+}
+
+variable "region" {
+  description = "The AWS region to create the VPC in"
+  type        = string
+}
+
 provider "aws" {
-  region = var.aws_region
+  region = var.region
 }
 
 resource "aws_vpc" "main" {
-  cidr_block = "10.0.0.0/16"
+  cidr_block = var.vpc_cidr
   tags = {
-    Name = "main-vpc"
+    Name = var.vpc_name
   }
-}
-
-resource "aws_subnet" "public" {
-  count                   = 2
-  vpc_id                  = aws_vpc.main.id
-  cidr_block              = "10.0.1.0/24"
-  availability_zone       = element(data.aws_availability_zones.available.names, count.index)
-  map_public_ip_on_launch = true
-
-  tags = {
-    Name = "PublicSubnet${count.index + 1}"
-  }
-}
-
-resource "aws_subnet" "private" {
-  count             = 2
-  vpc_id            = aws_vpc.main.id
-  cidr_block        = "10.0.2.0/24"
-  availability_zone = element(data.aws_availability_zones.available.names, count.index)
-
-  tags = {
-    Name = "PrivateSubnet${count.index + 1}"
-  }
-}
-
-resource "aws_route_table" "public" {
-  vpc_id = aws_vpc.main.id
-}
-
-resource "aws_route_table" "private" {
-  vpc_id = aws_vpc.main.id
-}
-
-resource "aws_internet_gateway" "main" {
-  vpc_id = aws_vpc.main.id
-}
-
-resource "aws_nat_gateway" "main" {
-  count         = 1
-  subnet_id     = element(aws_subnet.public.*.id, 0)
-  allocation_id = aws_eip.nat.id
-}
-
-resource "aws_eip" "nat" {
-  vpc = true
 }
 
 output "vpc_id" {
@@ -59,27 +29,27 @@ output "vpc_id" {
 }
 
 output "region" {
-  value = var.aws_region
+  value = var.region
 }
 
 output "public_subnet_ids" {
-  value = aws_subnet.public[*].id
+  value = [] # Populate with actual subnet IDs
 }
 
 output "private_subnet_ids" {
-  value = aws_subnet.private[*].id
+  value = [] # Populate with actual subnet IDs
 }
 
 output "route_table_ids" {
-  value = [aws_route_table.public.id, aws_route_table.private.id]
+  value = [] # Populate with actual route table IDs
 }
 
 output "internet_gateway_id" {
-  value = aws_internet_gateway.main.id
+  value = "" # Populate with actual internet gateway ID
 }
 
 output "nat_gateway_ids" {
-  value = aws_nat_gateway.main[*].id
+  value = [] # Populate with actual NAT gateway IDs
 }
 
 output "tags" {
