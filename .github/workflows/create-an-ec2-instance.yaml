@@ -22,7 +22,7 @@ on:
         required: true
 
 env:
-  ROOT_PATH: '${{ github.workspace }}/'
+  ROOT_PATH: '${{ github.workspace }}/ec2'
   
 jobs:
   provision-ec2:
@@ -66,17 +66,18 @@ jobs:
           TF_VAR_ec2_instance_type: ${{ github.event.inputs.ec2_instance_type }}
         run: |
           pwd        
-          #cd ../..
+          cd ${{env.ROOT_PATH}} 
           terraform init
           terraform validate
           terraform plan 
           terraform apply -auto-approve
-        working-directory: ${{env.ROOT_PATH}}
+        #working-directory: ${{env.ROOT_PATH}}
 
       - name: Set Outputs
         id: set_outputs
         run: |
           #cd <TERRAFORM-TEMPLATE-DIR>
+          cd ${{env.ROOT_PATH}} 
           echo "instance_id=$(terraform output -raw instance_id)" >> $GITHUB_ENV
           echo "instance_state=$(terraform output -raw instance_state)" >> $GITHUB_ENV
           echo "instance_type=$(terraform output -raw instance_type)" >> $GITHUB_ENV
