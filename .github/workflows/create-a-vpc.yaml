@@ -22,7 +22,7 @@ on:
         required: true
 
 env:
-  TERRAFORM_PATH: '${{ github.workspace }}/terraform'
+  TERRAFORM_PATH: 'vpc'
   
 jobs:
   provision-vpc:
