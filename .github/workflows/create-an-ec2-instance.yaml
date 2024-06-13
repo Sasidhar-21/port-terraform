@@ -22,7 +22,7 @@ on:
         required: true
 
 env:
-  ROOT_PATH: '${{ github.workspace }}/ec2'
+  ROOT_PATH: 'ec2'
   
 jobs:
   provision-ec2:
