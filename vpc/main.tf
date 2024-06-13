@@ -33,25 +33,25 @@ output "region" {
 }
 
 output "public_subnet_ids" {
-  value = [] # Populate with actual subnet IDs
+  value = aws_subnet.public.*.id
 }
 
 output "private_subnet_ids" {
-  value = [] # Populate with actual subnet IDs
+  value = aws_subnet.private.*.id
 }
 
 output "route_table_ids" {
-  value = [] # Populate with actual route table IDs
+  value = aws_route_table.main.*.id
 }
 
 output "internet_gateway_id" {
-  value = "" # Populate with actual internet gateway ID
+  value = aws_internet_gateway.main.id
 }
 
 output "nat_gateway_ids" {
-  value = [] # Populate with actual NAT gateway IDs
+  value = aws_nat_gateway.main.*.id
 }
 
 output "tags" {
-  value = aws_vpc.main.tags
+  value = var.tags
 }
