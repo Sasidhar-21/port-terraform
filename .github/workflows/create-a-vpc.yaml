@@ -112,6 +112,7 @@ jobs:
           blueprint: ${{ fromJson(inputs.port_context).blueprint }}
           properties: |-
             {
+              "vpc_id": "${{ env.vpc_id }}",
               "region": "${{ env.region }}",
               "public_subnet_ids": ${{ env.public_subnet_ids }},
               "private_subnet_ids": ${{ env.private_subnet_ids }},
