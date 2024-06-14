@@ -58,7 +58,15 @@ output "subnet_id" {
   description = "The ID of the subnet to which the instance is attached."
   value       = aws_instance.app_server.subnet_id
 }
+output "tags" {
+  description = "A map of tags assigned to the resource."
+  value       = aws_instance.app_server.tags
+}
 
+output "vpc_id" {
+  description = "The ID of the VPC where the instance is deployed."
+  value       = data.aws_vpc.selected.id
+}
 output "tags" {
   description = "A map of tags assigned to the resource."
   value       = aws_instance.app_server.tags
