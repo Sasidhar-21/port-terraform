@@ -109,6 +109,7 @@ jobs:
           properties: |-
             {
               "vpc_id": "${{ env.vpc_id }}",
+              "cidr_block": "${{ env.cidr_block }}",
               "region": "${{ env.region }}",
               "public_subnet_id": "${{ env.public_subnet_id }}",
               "tags": ${{ env.tags }}
