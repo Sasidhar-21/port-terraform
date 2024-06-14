@@ -17,13 +17,17 @@ on:
         description: EC2 pem key
         required: true
         type: string
+      vpc_name:
+        description: VPC name
+        required: true
+        type: string
       port_context:
         description: Includes blueprint, run ID, and entity identifier from Port.
         required: true
 
 env:
   ROOT_PATH: 'ec2'
-  
+
 jobs:
   provision-ec2:
     runs-on: ubuntu-latest
@@ -43,7 +47,7 @@ jobs:
           operation: PATCH_RUN
           runId: ${{ fromJson(inputs.port_context).run_id }}
           logMessage: |
-            About to create ec2 instance ${{ github.event.inputs.ec2_name }} .. ⛴️
+            About to create ec2 instance ${{ github.event.inputs.ec2_name }} in VPC ${{ github.event.inputs.vpc_name }} .. ⛴️
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v1
@@ -56,7 +60,7 @@ jobs:
         uses: hashicorp/setup-terraform@v2
         with:
           terraform_wrapper: false
-          
+
       - name: Terraform Apply
         id: apply
         env:
@@ -64,6 +68,7 @@ jobs:
           TF_VAR_pem_key_name: ${{ github.event.inputs.pem_key_name }}
           TF_VAR_aws_region: ${{ secrets.TF_USER_AWS_REGION }}
           TF_VAR_ec2_instance_type: ${{ github.event.inputs.ec2_instance_type }}
+          TF_VAR_vpc_name: ${{ github.event.inputs.vpc_name }}
         run: |
           pwd        
           cd ${{env.ROOT_PATH}} 
@@ -71,12 +76,10 @@ jobs:
           terraform validate
           terraform plan 
           terraform apply -auto-approve
-        #working-directory: ${{env.ROOT_PATH}}
 
       - name: Set Outputs
         id: set_outputs
         run: |
-          #cd <TERRAFORM-TEMPLATE-DIR>
           cd ${{env.ROOT_PATH}} 
           echo "instance_id=$(terraform output -raw instance_id)" >> $GITHUB_ENV
           echo "instance_state=$(terraform output -raw instance_state)" >> $GITHUB_ENV
