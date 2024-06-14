@@ -13,3 +13,6 @@ variable "aws_region" {
 variable "ec2_instance_type" {
   type = string
 }
+variable "vpc_name" {
+  type = string
+}
