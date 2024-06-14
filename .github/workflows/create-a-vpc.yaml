@@ -76,11 +76,7 @@ jobs:
           cd ${{ env.TERRAFORM_PATH }}
           echo "vpc_id=$(terraform output -raw vpc_id)" >> $GITHUB_ENV
           echo "region=$(terraform output -raw region)" >> $GITHUB_ENV
-          echo "public_subnet_ids=$(terraform output -json public_subnet_ids | jq -c .)" >> $GITHUB_ENV
-          echo "private_subnet_ids=$(terraform output -json private_subnet_ids | jq -c .)" >> $GITHUB_ENV
-          echo "route_table_ids=$(terraform output -json route_table_ids | jq -c .)" >> $GITHUB_ENV
-          echo "internet_gateway_id=$(terraform output -raw internet_gateway_id)" >> $GITHUB_ENV
-          echo "nat_gateway_ids=$(terraform output -json nat_gateway_ids | jq -c .)" >> $GITHUB_ENV
+          echo "public_subnet_id=$(terraform output -raw public_subnet_id)" >> $GITHUB_ENV
           tags=$(terraform output -json tags | jq -c .)
           echo "tags=$tags" >> $GITHUB_ENV
 
@@ -112,13 +108,8 @@ jobs:
           blueprint: ${{ fromJson(inputs.port_context).blueprint }}
           properties: |-
             {
-              "vpc_id": "${{ env.vpc_id }}",
               "region": "${{ env.region }}",
-              "public_subnet_ids": ${{ env.public_subnet_ids }},
-              "private_subnet_ids": ${{ env.private_subnet_ids }},
-              "route_table_ids": ${{ env.route_table_ids }},
-              "internet_gateway_id": "${{ env.internet_gateway_id }}",
-              "nat_gateway_ids": ${{ env.nat_gateway_ids }},
+              "public_subnet_id": "${{ env.public_subnet_id }}",
               "tags": ${{ env.tags }}
             }
           clientId: ${{ secrets.PORT_CLIENT_ID }}
