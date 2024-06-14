@@ -84,8 +84,8 @@ resource "aws_internet_gateway" "main" {
 
 resource "aws_nat_gateway" "main" {
   count = 2
-  subnet_id     = aws_subnet.public[count.index].id
-  
+  subnet_id = aws_subnet.public[count.index].id
+
   tags = merge(
     var.tags,
     {
