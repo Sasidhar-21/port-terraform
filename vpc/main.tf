@@ -95,11 +95,6 @@ resource "aws_nat_gateway" "main" {
   )
 }
 
-resource "aws_eip" "nat" {
-  count = 2
-  vpc = true
-}
-
 output "vpc_id" {
   value = aws_vpc.main.id
 }
